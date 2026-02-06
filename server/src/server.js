@@ -17,6 +17,10 @@ mongoose
   .connect(process.env.MONGODB_URI)
   .then(() => console.log("MongoDB connected"))
   .catch(err => console.log(err));
+  mongoose.connection.on("connected", () => {
+  console.log("Mongoose connected to DB");
+});
+
 
 const PORT = process.env.PORT ||8000;
 app.get("/", (req, res) => {

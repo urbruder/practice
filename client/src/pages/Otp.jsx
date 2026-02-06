@@ -5,43 +5,46 @@ import api from "../api";
 const Otp = () => {
   const navigate = useNavigate();
   const [otp, setOtp] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const handleSubmit = async e => {
     e.preventDefault();
+
+    if (loading) return; // prevent double submit
+    setLoading(true);
+
     try {
-      await api.post("/verify-otp", {
-        email: localStorage.getItem("email"),
-        otp
-      });
+      const email = localStorage.getItem("email");
+
+      if (!email) {
+        alert("Session expired. Please login again.");
+        navigate("/");
+        return;
+      }
+
+      await api.post("/verify-otp", { email, otp });
+
       localStorage.removeItem("email");
       navigate("/home");
-    } catch {
-      alert("Invalid OTP");
+    } catch (err) {
+      alert(err.response?.data?.message || "Invalid OTP");
+      setLoading(false); // allow retry only on failure
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-black">
-      <div className="w-full max-w-sm p-8 border border-green-500 rounded">
-        <h2 className="text-2xl text-green-500 text-center mb-4">
-          Verify OTP
-        </h2>
+    <form onSubmit={handleSubmit}>
+      <input
+        value={otp}
+        onChange={e => setOtp(e.target.value)}
+        placeholder="Enter OTP"
+        required
+      />
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <input
-            placeholder="Enter OTP"
-            className="w-full p-3 bg-black border border-green-500 rounded text-white"
-            value={otp}
-            onChange={e => setOtp(e.target.value)}
-            required
-          />
-
-          <button className="w-full bg-green-500 text-black py-3 rounded font-semibold">
-            Verify
-          </button>
-        </form>
-      </div>
-    </div>
+      <button disabled={loading}>
+        {loading ? "Verifying..." : "Verify"}
+      </button>
+    </form>
   );
 };
 
