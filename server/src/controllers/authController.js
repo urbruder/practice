@@ -35,7 +35,6 @@ export const signup = async (req, res) => {
   }
 };
 
-// LOGIN (SEND OTP)
 export const login = async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -53,19 +52,22 @@ export const login = async (req, res) => {
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
 
     user.otp = otp;
-    user.otpExpiresAt = Date.now() + 5 * 60 * 1000; // 5 min
+    user.otpExpiresAt = Date.now() + 5 * 60 * 1000;
     await user.save();
 
-    await sendOTP(user.phone, otp);
+    // 🔥 DO NOT AWAIT
+    sendOTP(user.phone, otp).catch(err =>
+      console.error("OTP send failed:", err.message)
+    );
 
-    res.json({ message: "OTP sent to your phone" });
+    return res.json({ message: "OTP sent to your phone" });
 
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error("LOGIN ERROR:", error);
+    return res.status(500).json({ message: "Server error" });
   }
 };
 
-// VERIFY OTP (FINAL LOGIN)
 export const verifyOTP = async (req, res) => {
   try {
     const { email, otp } = req.body;
@@ -79,23 +81,19 @@ export const verifyOTP = async (req, res) => {
       return res.status(400).json({ message: "OTP expired" });
     }
 
-    // clear OTP
     user.otp = null;
     user.otpExpiresAt = null;
     await user.save();
 
-    // 🔥 DO NOT BLOCK LOGIN ON EMAIL
-    try {
-      await sendEmail(
-        user.email,
-        "Login Successful",
-        "You have successfully logged in."
-      );
-    } catch (err) {
-      console.error("Login email failed:", err.message);
-    }
+    // 🔥 DO NOT AWAIT
+    sendEmail(
+      user.email,
+      "Login Successful",
+      "You have successfully logged in."
+    ).catch(err =>
+      console.error("Login email failed:", err.message)
+    );
 
-    // 🔥 ALWAYS return response
     return res.status(200).json({
       success: true,
       message: "Login successful"
@@ -106,6 +104,7 @@ export const verifyOTP = async (req, res) => {
     return res.status(500).json({ message: "Server error" });
   }
 };
+
 // LOGOUT
 export const logout = async (req, res) => {
   res.json({ message: "Logged out successfully" });
