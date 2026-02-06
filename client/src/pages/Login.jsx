@@ -26,7 +26,7 @@ const Login = () => {
           Welcome
         </h2>
         <p className="text-center text-gray-400 mb-6">
-          Log in to JobReferral.Club
+          Log in to this website
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-4">
