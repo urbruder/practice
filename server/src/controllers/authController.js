@@ -71,7 +71,7 @@ export const verifyOTP = async (req, res) => {
     const { email, otp } = req.body;
 
     const user = await User.findOne({ email });
-    if (!user || user.otp !== otp) {
+    if (!user || user.otp !== String(otp)) {
       return res.status(400).json({ message: "Invalid OTP" });
     }
 
@@ -79,23 +79,33 @@ export const verifyOTP = async (req, res) => {
       return res.status(400).json({ message: "OTP expired" });
     }
 
+    // clear OTP
     user.otp = null;
     user.otpExpiresAt = null;
     await user.save();
 
-    await sendEmail(
-      user.email,
-      "Login Successful",
-      "You have successfully logged in."
-    );
+    // 🔥 DO NOT BLOCK LOGIN ON EMAIL
+    try {
+      await sendEmail(
+        user.email,
+        "Login Successful",
+        "You have successfully logged in."
+      );
+    } catch (err) {
+      console.error("Login email failed:", err.message);
+    }
 
-    res.json({ message: "Login successful" });
+    // 🔥 ALWAYS return response
+    return res.status(200).json({
+      success: true,
+      message: "Login successful"
+    });
 
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error("VERIFY OTP ERROR:", error);
+    return res.status(500).json({ message: "Server error" });
   }
 };
-
 // LOGOUT
 export const logout = async (req, res) => {
   res.json({ message: "Logged out successfully" });
