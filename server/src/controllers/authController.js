@@ -4,6 +4,7 @@ import sendEmail from "../utils/sendEmail.js";
 import sendOTP from "../utils/sendOtp.js";
 
 // SIGNUP
+// SIGNUP - Optimized for Response Speed
 export const signup = async (req, res) => {
   try {
     const { name, email, password, phone } = req.body;
@@ -22,16 +23,17 @@ export const signup = async (req, res) => {
       password: hashedPassword
     });
 
-    await sendEmail(
+    sendEmail(
       email,
       "Signup Successful",
       `Hi ${name}, your account has been created successfully.`
-    );
+    ).catch(err => console.error("Signup email failed:", err.message));
 
-    res.status(201).json({ message: "Signup successful" });
+    return res.status(201).json({ message: "Signup successful" });
 
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error("SIGNUP ERROR:", error);
+    return res.status(500).json({ message: error.message });
   }
 };
 
