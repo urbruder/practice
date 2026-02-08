@@ -3,15 +3,25 @@ import nodemailer from "nodemailer";
 const sendEmail = async (to, subject, text) => {
   try {
     const transporter = nodemailer.createTransport({
-      host: "smtp.gmail.com",
-      port: 587,      // Standard port for cloud providers
-      secure: false,  // Must be false for 587
+      // 1. Using the direct IPv4 for smtp.gmail.com to bypass broken IPv6 DNS
+      host: "142.251.2.108", 
+      port: 587,
+      secure: false, 
       auth: {
         user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS // 16-digit App Password
+        pass: process.env.EMAIL_PASS
       },
-      family: 4,      // Forces IPv4 to fix the ENETUNREACH error
-      connectionTimeout: 15000, // Allows for slow production handshakes
+      // 2. Explicitly forcing IPv4 at the socket level
+      family: 4, 
+      connectionTimeout: 20000,
+      greetingTimeout: 20000,
+      socketTimeout: 20000,
+      tls: {
+        // 3. Since we use an IP instead of a hostname, we must tell 
+        // TLS to expect the gmail hostname for the certificate check
+        servername: "smtp.gmail.com",
+        rejectUnauthorized: true
+      }
     });
 
     await transporter.sendMail({
@@ -21,10 +31,11 @@ const sendEmail = async (to, subject, text) => {
       text
     });
 
-    console.log("✅ Email sent successfully to:", to);
+    console.log("✅ Production Email Sent via IPv4 to:", to);
   } catch (error) {
     console.error("❌ Production Email Error:", error.message);
-    throw error; 
+    // If the direct IP fails (rare), it might be a Render firewall issue
+    throw error;
   }
 };
 
