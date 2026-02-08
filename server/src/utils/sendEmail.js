@@ -1,40 +1,49 @@
 import nodemailer from "nodemailer";
+import { google } from "googleapis"
+
+const OAuth2 = google.auth.OAuth2;
 
 const sendEmail = async (to, subject, text) => {
   try {
+    const oauth2Client = new OAuth2(
+      process.env.CLIENT_ID,
+      process.env.CLIENT_SECRET,
+      "https://developers.google.com/oauthplayground"
+    );
+
+    oauth2Client.setCredentials({
+      refresh_token: process.env.REFRESH_TOKEN,
+    });
+
+    const accessToken = await new Promise((resolve, reject) => {
+      oauth2Client.getAccessToken((err, token) => {
+        if (err) reject("Failed to create access token :(");
+        resolve(token);
+      });
+    });
+
     const transporter = nodemailer.createTransport({
-      // 1. Using the direct IPv4 for smtp.gmail.com to bypass broken IPv6 DNS
-      host: "142.251.2.108", 
-      port: 587,
-      secure: false, 
+      service: "gmail",
       auth: {
+        type: "OAuth2",
         user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS
+        clientId: process.env.CLIENT_ID,
+        clientSecret: process.env.CLIENT_SECRET,
+        refreshToken: process.env.REFRESH_TOKEN,
+        accessToken: accessToken,
       },
-      // 2. Explicitly forcing IPv4 at the socket level
-      family: 4, 
-      connectionTimeout: 20000,
-      greetingTimeout: 20000,
-      socketTimeout: 20000,
-      tls: {
-        // 3. Since we use an IP instead of a hostname, we must tell 
-        // TLS to expect the gmail hostname for the certificate check
-        servername: "smtp.gmail.com",
-        rejectUnauthorized: true
-      }
     });
 
     await transporter.sendMail({
-      from: `"Support" <${process.env.EMAIL_USER}>`,
+      from: `"My App" <${process.env.EMAIL_USER}>`,
       to,
       subject,
-      text
+      text,
     });
 
-    console.log("✅ Production Email Sent via IPv4 to:", to);
+    console.log("✅ Gmail API: Email sent to:", to);
   } catch (error) {
-    console.error("❌ Production Email Error:", error.message);
-    // If the direct IP fails (rare), it might be a Render firewall issue
+    console.error("❌ Gmail API Error:", error.message);
     throw error;
   }
 };
