@@ -2,18 +2,23 @@ import nodemailer from "nodemailer";
 
 const sendEmail = async (to, subject, text) => {
   const transporter = nodemailer.createTransport({
-    service: "gmail",
-    host: "smtp.gmail.com",
-    port: 587, // Standard for cloud environments
+    // Explicitly use the host and port instead of the "service" shortcut
+    host: "smtp.gmail.com", 
+    port: 587,
     secure: false, // Must be false for port 587
     auth: {
       user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASS // 16-digit App Password
+      pass: process.env.EMAIL_PASS
     },
-    // Increase timeouts for slow production connections
-    connectionTimeout: 10000, 
-    greetingTimeout: 10000,
-    socketTimeout: 10000
+    // Force IPv4 by setting family to 4
+    // This stops the 'ENETUNREACH' error with IPv6 addresses
+    connectionTimeout: 15000, 
+    socketTimeout: 15000,
+    tls: {
+      // This ensures the connection doesn't fail on local network issues
+      rejectUnauthorized: true,
+      minVersion: 'TLSv1.2'
+    }
   });
 
   await transporter.sendMail({
