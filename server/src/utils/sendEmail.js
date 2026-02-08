@@ -13,15 +13,15 @@ const sendEmail = async (to, subject, text) => {
       refresh_token: process.env.REFRESH_TOKEN,
     });
 
-    // 1. Cleaner way to get the token without the new Promise wrapper
+    // 1. Fetch the token explicitly to ensure the handshake works
     const { token } = await oauth2Client.getAccessToken();
-    
-    if (!token) {
-      throw new Error("Access token could not be generated. Check if Refresh Token is valid.");
-    }
 
     const transporter = nodemailer.createTransport({
-      service: "gmail",
+      // 2. Do NOT use 'service: gmail' here if port errors persist. 
+      // Instead, use host/port 587 which is more cloud-friendly.
+      host: "smtp.gmail.com",
+      port: 587,
+      secure: false, 
       auth: {
         type: "OAuth2",
         user: process.env.EMAIL_USER,
@@ -30,19 +30,20 @@ const sendEmail = async (to, subject, text) => {
         refreshToken: process.env.REFRESH_TOKEN,
         accessToken: token,
       },
+      // 3. FORCE IPv4 to stop the ENETUNREACH error
+      family: 4 
     });
 
     await transporter.sendMail({
-      from: `"My App" <${process.env.EMAIL_USER}>`,
+      from: `"Support" <${process.env.EMAIL_USER}>`,
       to,
       subject,
       text,
     });
 
-    console.log("✅ Email successfully sent via Gmail API.");
+    console.log("✅ Email sent successfully via OAuth2 & IPv4");
   } catch (error) {
-    // 2. Catch the "undefined" by logging the full error
-    console.error("❌ Gmail API Error Details:", error.response ? error.response.data : error);
+    console.error("❌ Gmail API Error Details:", error);
     throw error;
   }
 };
