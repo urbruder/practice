@@ -1,4 +1,3 @@
-import nodemailer from "nodemailer";
 import { google } from "googleapis";
 
 const sendEmail = async (to, subject, text) => {
@@ -13,37 +12,36 @@ const sendEmail = async (to, subject, text) => {
       refresh_token: process.env.REFRESH_TOKEN,
     });
 
-    // 1. Fetch the token explicitly to ensure the handshake works
-    const { token } = await oauth2Client.getAccessToken();
+    const gmail = google.gmail({ version: "v1", auth: oauth2Client });
 
-    const transporter = nodemailer.createTransport({
-      // 2. Do NOT use 'service: gmail' here if port errors persist. 
-      // Instead, use host/port 587 which is more cloud-friendly.
-      host: "smtp.gmail.com",
-      port: 587,
-      secure: false, 
-      auth: {
-        type: "OAuth2",
-        user: process.env.EMAIL_USER,
-        clientId: process.env.CLIENT_ID,
-        clientSecret: process.env.CLIENT_SECRET,
-        refreshToken: process.env.REFRESH_TOKEN,
-        accessToken: token,
-      },
-      // 3. FORCE IPv4 to stop the ENETUNREACH error
-      family: 4 
-    });
-
-    await transporter.sendMail({
-      from: `"Support" <${process.env.EMAIL_USER}>`,
-      to,
-      subject,
+    // Create a base64 encoded email string as required by Gmail API
+    const utf8Subject = `=?utf-8?B?${Buffer.from(subject).toString('base64')}?=`;
+    const messageParts = [
+      `To: ${to}`,
+      'Content-Type: text/html; charset=utf-8',
+      'MIME-Version: 1.0',
+      `Subject: ${utf8Subject}`,
+      '',
       text,
+    ];
+    const message = messageParts.join('\n');
+
+    const encodedMessage = Buffer.from(message)
+      .toString('base64')
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_')
+      .replace(/=+$/, '');
+
+    await gmail.users.messages.send({
+      userId: 'me',
+      requestBody: {
+        raw: encodedMessage,
+      },
     });
 
-    console.log("✅ Email sent successfully via OAuth2 & IPv4");
+    console.log("✅ Gmail API: Email sent via REST (Port 443)");
   } catch (error) {
-    console.error("❌ Gmail API Error Details:", error);
+    console.error("❌ Gmail API Error:", error.message);
     throw error;
   }
 };
